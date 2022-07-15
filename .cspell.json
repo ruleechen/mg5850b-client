@@ -1,0 +1,13 @@
+{
+  "version": "0.2",
+  "words": [
+    "platformio",
+    "gpio",
+    "millis",
+    "println",
+    "wifi",
+    "ssid",
+    "mDNS",
+    "tmpl"
+  ]
+}
