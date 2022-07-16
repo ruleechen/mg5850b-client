@@ -1,7 +1,11 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
+#include <MG5850BClient.h>
 
-SoftwareSerial mg5850b;
+using namespace Victor::Components;
+
+SoftwareSerial _serial;
+MG5850BClient _client;
 
 void ledOn() {
   digitalWrite(LED_BUILTIN, LOW);
@@ -15,7 +19,10 @@ void ledOff() {
 void setup() {
   Serial.begin(115200);
 
-  mg5850b.begin(9600, SWSERIAL_8N1, 4, 5, false, 256);
+  _serial.begin(9600, SWSERIAL_8N1, 4, 5, false, 256);
+  _client.onCommand = [](const uint8_t* payload, const size_t size) {
+    _serial.write(payload, size);
+  };
 
   pinMode(LED_BUILTIN, OUTPUT);
   ledOn();
@@ -24,42 +31,32 @@ void setup() {
   ledOff();
 }
 
-uint8_t command[] = {
-  0x55,
-  0x5A,
-  0x81,
-  0x00,
-  0x00,
-  0x81,
-  0xFE,
-};
-
-String response;
+void printRadar(bool enabled) {
+  auto state = String(enabled ? "enabled" : "disabled");
+  Serial.println("[" + String(millis()) + "] radar: " + state);
+}
 
 void loop() {
+  while (_serial.available()) {
+    auto ch = _serial.read();
+    _client.receive((uint8_t)ch);
+  }
+
   auto message = String("");
   while (Serial.available()) {
     message += (char)Serial.read();
     delay(2);
   }
 
-  while (mg5850b.available()) {
-    auto ch = (byte)mg5850b.read();
-    response += String(ch, HEX);
-  }
-
-  if (response.endsWith("fe")) {
-    Serial.println("got response [" + response + "]");
-    response = "";
-  }
-
-  auto now = millis();
   if (message.length() > 0) {
     ledOn();
-    Serial.println("[" + String(now) + "] got message: " + message);
-    if (message.indexOf("1") == 0) {
-      mg5850b.write(command, 7);
-      Serial.println("sent to mg5850b");
+    Serial.println("[" + String(millis()) + "] input: " + message);
+    if (message.indexOf("true") == 0) {
+      _client.setRadarEnable(true, printRadar);
+    } else if (message.indexOf("false") == 0) {
+      _client.setRadarEnable(false, printRadar);
+    } else if (message.indexOf("read") == 0) {
+      _client.getRadarEnable(printRadar);
     }
     ledOff();
   }
