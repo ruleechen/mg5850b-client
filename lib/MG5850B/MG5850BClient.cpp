@@ -36,33 +36,25 @@ namespace Victor::Components {
       const auto argumentLow  = _receiveBuffer[4];
       _receiveBuffer.clear();
       // switch
-      if (command == MG5850B_COMMAND_RADAR_ENABLE_READ) {
-        if (_getRadarEnableCb != nullptr) {
+      if (
+        command == MG5850B_COMMAND_RADAR_ENABLE_READ ||
+        command == MG5850B_COMMAND_RADAR_ENABLE_WRITE
+      ) {
+        if (_enabledCallback != nullptr) {
           const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-          _getRadarEnableCb(enabled);
-          _getRadarEnableCb = nullptr;
-        }
-      } else if (command == MG5850B_COMMAND_RADAR_ENABLE_WRITE) {
-        if (_setRadarEnableCb != nullptr) {
-          const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-          _setRadarEnableCb(enabled);
-          _setRadarEnableCb = nullptr;
+          _enabledCallback(enabled);
         }
       } else if (command == MG5850B_COMMAND_RADAR_LEVEL_READ) {
       } else if (command == MG5850B_COMMAND_RADAR_LEVEL_WRITE) {
       } else if (command == MG5850B_COMMAND_DELAY_LEVEL_READ) {
       } else if (command == MG5850B_COMMAND_DELAY_LEVEL_WRITE) {
-      } else if (command == MG5850B_COMMAND_LIGHT_ENABLE_READ) {
-        if (_setLightEnableCb != nullptr) {
+      } else if (
+        command == MG5850B_COMMAND_LIGHT_ENABLE_READ ||
+        command == MG5850B_COMMAND_LIGHT_ENABLE_WRITE
+      ) {
+        if (_enabledCallback != nullptr) {
           const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-          _setLightEnableCb(enabled);
-          _setLightEnableCb = nullptr;
-        }
-      } else if (command == MG5850B_COMMAND_LIGHT_ENABLE_WRITE) {
-        if (_getLightEnableCb != nullptr) {
-          const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-          _getLightEnableCb(enabled);
-          _getLightEnableCb = nullptr;
+          _enabledCallback(enabled);
         }
       } else if (command == MG5850B_COMMAND_LIGHT_HIGH_READ) {
       } else if (command == MG5850B_COMMAND_LIGHT_HIGH_WRITE) {
@@ -74,7 +66,7 @@ namespace Victor::Components {
 
   void MG5850BClient::getRadarEnable(const TEnabledCallback cb) {
     _clearCallbacks();
-    _getRadarEnableCb = cb;
+    _enabledCallback = cb;
     _sendCommand(
       MG5850B_COMMAND_RADAR_ENABLE_READ,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
@@ -84,7 +76,7 @@ namespace Victor::Components {
 
   void MG5850BClient::setRadarEnable(const bool enable, const TEnabledCallback cb) {
     _clearCallbacks();
-    _setRadarEnableCb = cb;
+    _enabledCallback = cb;
     _sendCommand(
       MG5850B_COMMAND_RADAR_ENABLE_WRITE,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
@@ -94,7 +86,7 @@ namespace Victor::Components {
 
   void MG5850BClient::getLightEnable(const TEnabledCallback cb) {
     _clearCallbacks();
-    _getRadarEnableCb = cb;
+    _enabledCallback = cb;
     _sendCommand(
       MG5850B_COMMAND_LIGHT_ENABLE_READ,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
@@ -104,7 +96,7 @@ namespace Victor::Components {
 
   void MG5850BClient::setLightEnable(const bool enable, const TEnabledCallback cb) {
     _clearCallbacks();
-    _setRadarEnableCb = cb;
+    _enabledCallback = cb;
     _sendCommand(
       MG5850B_COMMAND_LIGHT_ENABLE_WRITE,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
@@ -129,10 +121,7 @@ namespace Victor::Components {
   }
 
   void MG5850BClient::_clearCallbacks() {
-    _getRadarEnableCb = nullptr;
-    _setRadarEnableCb = nullptr;
-    _getLightEnableCb = nullptr;
-    _setLightEnableCb = nullptr;
+    _enabledCallback = nullptr;
   }
 
 } // namespace Victor::Components

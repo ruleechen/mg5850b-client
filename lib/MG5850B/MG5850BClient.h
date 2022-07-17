@@ -23,10 +23,7 @@ namespace Victor::Components {
     std::vector<uint8_t> _receiveBuffer = {};
     void _sendCommand(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow);
     void _clearCallbacks();
-    TEnabledCallback _getRadarEnableCb = nullptr;
-    TEnabledCallback _setRadarEnableCb = nullptr;
-    TEnabledCallback _getLightEnableCb = nullptr;
-    TEnabledCallback _setLightEnableCb = nullptr;
+    TEnabledCallback _enabledCallback = nullptr;
   };
 } // namespace Victor::Components
 
