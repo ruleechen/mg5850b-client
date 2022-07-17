@@ -39,6 +39,10 @@ void printLevel(const uint8_t level) {
   auto state = String(level);
   Serial.println("[" + String(millis()) + "] level " + state);
 }
+void printValue(const uint16_t value) {
+  auto state = String(value);
+  Serial.println("[" + String(millis()) + "] value " + state);
+}
 
 void loop() {
   while (_serial.available()) {
@@ -71,6 +75,14 @@ void loop() {
       _client.setLightEnable(false, printEnabled);
     } else if (message.indexOf("getLightEnable") == 0) {
       _client.getLightEnable(printEnabled);
+    } else if (message.indexOf("getLightHigh") == 0) {
+      _client.getLightHigh(printValue);
+    } else if (message.indexOf("setLightHigh800") == 0) {
+      _client.setLightHigh(800, printValue);
+    } else if (message.indexOf("getLightLow") == 0) {
+      _client.getLightLow(printValue);
+    } else if (message.indexOf("setLightLow750") == 0) {
+      _client.setLightLow(750, printValue);
     }
     ledOff();
   }

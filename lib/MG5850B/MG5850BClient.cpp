@@ -35,7 +35,7 @@ namespace Victor::Components {
       const auto calculated = _calculateCheckCode(_receiveBuffer[2], _receiveBuffer[3], _receiveBuffer[4]);
       if (checkCode == calculated) {
         const auto command = _receiveBuffer[2];
-        // const auto argumentHigh = _receiveBuffer[3];
+        const auto argumentHigh = _receiveBuffer[3];
         const auto argumentLow  = _receiveBuffer[4];
         // switch
         if (
@@ -64,10 +64,16 @@ namespace Victor::Components {
             const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
             _enabledCallback(enabled);
           }
-        } else if (command == MG5850B_COMMAND_LIGHT_HIGH_READ) {
-        } else if (command == MG5850B_COMMAND_LIGHT_HIGH_WRITE) {
-        } else if (command == MG5850B_COMMAND_LIGHT_LOW_READ) {
-        } else if (command == MG5850B_COMMAND_LIGHT_LOW_WRITE) {
+        } else if (
+          command == MG5850B_COMMAND_LIGHT_HIGH_READ ||
+          command == MG5850B_COMMAND_LIGHT_HIGH_WRITE ||
+          command == MG5850B_COMMAND_LIGHT_LOW_READ ||
+          command == MG5850B_COMMAND_LIGHT_LOW_WRITE
+        ) {
+          if (_valueCallback != nullptr) {
+            const uint16_t value = ((uint16_t)argumentHigh << 8) | argumentLow;
+            _valueCallback(value);
+          }
         }
       }
       // reset buffer
@@ -105,18 +111,15 @@ namespace Victor::Components {
     );
   }
 
-  bool MG5850BClient::setRadarDistance(const uint8_t level, const TLevelCallback cb) {
-    if (level < 0 || level > 15) {
-      return false;
-    }
+  void MG5850BClient::setRadarDistance(const uint8_t level, const TLevelCallback cb) {
     _clearCallbacks();
     _levelCallback = cb;
+    const auto levelFix = std::max<uint8_t>(0, std::min<uint8_t>(15, level)); // 0~15
     _sendCommand(
       MG5850B_COMMAND_RADAR_DISTANCE_WRITE,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
-      level
+      levelFix
     );
-    return true;
   }
 
   void MG5850BClient::getLightEnable(const TEnabledCallback cb) {
@@ -137,6 +140,45 @@ namespace Victor::Components {
       MG5850B_COMMAND_ARGUMENT_EMPTY,
       enable ? MG5850B_COMMAND_ARGUMENT_TRUE : MG5850B_COMMAND_ARGUMENT_FALSE
     );
+  }
+
+  void MG5850BClient::_getLightValue(const uint8_t command, const TValueCallback cb) {
+    _clearCallbacks();
+    _valueCallback = cb;
+    _sendCommand(
+      command,
+      MG5850B_COMMAND_ARGUMENT_EMPTY,
+      MG5850B_COMMAND_ARGUMENT_EMPTY
+    );
+  }
+
+  void MG5850BClient::_setLightValue(const uint8_t command, const uint16_t value, const TValueCallback cb) {
+    _clearCallbacks();
+    _valueCallback = cb;
+    const auto valueFix = std::max<uint16_t>(0, std::min<uint16_t>(1023, value)); // 0~1023
+    const uint8_t argumentHigh = valueFix >> 8;
+    const uint8_t argumentLow  = valueFix;
+    _sendCommand(
+      command,
+      argumentHigh,
+      argumentLow
+    );
+  }
+
+  void MG5850BClient::getLightHigh(const TValueCallback cb) {
+    _getLightValue(MG5850B_COMMAND_LIGHT_HIGH_READ, cb);
+  }
+
+  void MG5850BClient::setLightHigh(const uint16_t value, const TValueCallback cb) {
+    _setLightValue(MG5850B_COMMAND_LIGHT_HIGH_WRITE, value, cb);
+  }
+
+  void MG5850BClient::getLightLow(const TValueCallback cb) {
+    _getLightValue(MG5850B_COMMAND_LIGHT_LOW_READ, cb);
+  }
+
+  void MG5850BClient::setLightLow(const uint16_t value, const TValueCallback cb) {
+    _setLightValue(MG5850B_COMMAND_LIGHT_LOW_WRITE, value, cb);
   }
 
   uint8_t MG5850BClient::_calculateCheckCode(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow) {
@@ -163,6 +205,7 @@ namespace Victor::Components {
   void MG5850BClient::_clearCallbacks() {
     _enabledCallback = nullptr;
     _levelCallback = nullptr;
+    _valueCallback = nullptr;
   }
 
 } // namespace Victor::Components

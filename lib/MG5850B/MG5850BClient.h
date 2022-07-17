@@ -15,20 +15,29 @@ namespace Victor::Components {
     // APIs
     typedef std::function<void(const bool enabled)> TEnabledCallback;
     typedef std::function<void(const uint8_t level)> TLevelCallback;
+    typedef std::function<void(const uint16_t value)> TValueCallback;
     void getRadarEnable(const TEnabledCallback cb);
     void setRadarEnable(const bool enable, const TEnabledCallback cb = nullptr);
     void getRadarDistance(const TLevelCallback cb);
-    bool setRadarDistance(const uint8_t level, const TLevelCallback cb);
+    void setRadarDistance(const uint8_t level, const TLevelCallback cb);
     void getLightEnable(const TEnabledCallback cb);
     void setLightEnable(const bool enable, const TEnabledCallback cb = nullptr);
+    void getLightHigh(const TValueCallback cb);
+    void setLightHigh(const uint16_t value, const TValueCallback cb);
+    void getLightLow(const TValueCallback cb);
+    void setLightLow(const uint16_t value, const TValueCallback cb);
 
    private:
     std::vector<uint8_t> _receiveBuffer = {};
+    void _getLightValue(const uint8_t command, const TValueCallback cb);
+    void _setLightValue(const uint8_t command, const uint16_t value, const TValueCallback cb);
+
     static uint8_t _calculateCheckCode(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow);
     void _sendCommand(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow);
     void _clearCallbacks();
     TEnabledCallback _enabledCallback = nullptr;
     TLevelCallback _levelCallback = nullptr;
+    TValueCallback _valueCallback = nullptr;
   };
 } // namespace Victor::Components
 
