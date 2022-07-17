@@ -14,8 +14,11 @@ namespace Victor::Components {
     TCommandSend onCommand = nullptr;
     // APIs
     typedef std::function<void(const bool enabled)> TEnabledCallback;
+    typedef std::function<void(const uint8_t level)> TLevelCallback;
     void getRadarEnable(const TEnabledCallback cb);
     void setRadarEnable(const bool enable, const TEnabledCallback cb = nullptr);
+    void getRadarDistance(const TLevelCallback cb);
+    bool setRadarDistance(const uint8_t level, const TLevelCallback cb);
     void getLightEnable(const TEnabledCallback cb);
     void setLightEnable(const bool enable, const TEnabledCallback cb = nullptr);
 
@@ -24,6 +27,7 @@ namespace Victor::Components {
     void _sendCommand(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow);
     void _clearCallbacks();
     TEnabledCallback _enabledCallback = nullptr;
+    TLevelCallback _levelCallback = nullptr;
   };
 } // namespace Victor::Components
 

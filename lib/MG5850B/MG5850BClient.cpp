@@ -2,24 +2,24 @@
 
 namespace Victor::Components {
 
-  #define MG5850B_COMMAND_HEAD_BYTE1         0x55
-  #define MG5850B_COMMAND_HEAD_BYTE2         0x5a
-  #define MG5850B_COMMAND_TAIL               0xfe
-  #define MG5850B_COMMAND_ARGUMENT_EMPTY     0x00
-  #define MG5850B_COMMAND_ARGUMENT_TRUE      0x01
-  #define MG5850B_COMMAND_ARGUMENT_FALSE     0x00
-  #define MG5850B_COMMAND_RADAR_ENABLE_READ  0x89
-  #define MG5850B_COMMAND_RADAR_ENABLE_WRITE 0x09
-  #define MG5850B_COMMAND_RADAR_LEVEL_READ   0x81
-  #define MG5850B_COMMAND_RADAR_LEVEL_WRITE  0x01
-  #define MG5850B_COMMAND_DELAY_LEVEL_READ   0x82
-  #define MG5850B_COMMAND_DELAY_LEVEL_WRITE  0x02
-  #define MG5850B_COMMAND_LIGHT_ENABLE_READ  0x83
-  #define MG5850B_COMMAND_LIGHT_ENABLE_WRITE 0x03
-  #define MG5850B_COMMAND_LIGHT_HIGH_READ    0x84
-  #define MG5850B_COMMAND_LIGHT_HIGH_WRITE   0x04
-  #define MG5850B_COMMAND_LIGHT_LOW_READ     0x85
-  #define MG5850B_COMMAND_LIGHT_LOW_WRITE    0x05
+  #define MG5850B_COMMAND_HEAD_BYTE1            0x55
+  #define MG5850B_COMMAND_HEAD_BYTE2            0x5a
+  #define MG5850B_COMMAND_TAIL                  0xfe
+  #define MG5850B_COMMAND_ARGUMENT_EMPTY        0x00
+  #define MG5850B_COMMAND_ARGUMENT_TRUE         0x01
+  #define MG5850B_COMMAND_ARGUMENT_FALSE        0x00
+  #define MG5850B_COMMAND_RADAR_ENABLE_READ     0x89
+  #define MG5850B_COMMAND_RADAR_ENABLE_WRITE    0x09
+  #define MG5850B_COMMAND_RADAR_DISTANCE_READ   0x81
+  #define MG5850B_COMMAND_RADAR_DISTANCE_WRITE  0x01
+  #define MG5850B_COMMAND_DELAY_LEVEL_READ      0x82
+  #define MG5850B_COMMAND_DELAY_LEVEL_WRITE     0x02
+  #define MG5850B_COMMAND_LIGHT_ENABLE_READ     0x83
+  #define MG5850B_COMMAND_LIGHT_ENABLE_WRITE    0x03
+  #define MG5850B_COMMAND_LIGHT_HIGH_READ       0x84
+  #define MG5850B_COMMAND_LIGHT_HIGH_WRITE      0x04
+  #define MG5850B_COMMAND_LIGHT_LOW_READ        0x85
+  #define MG5850B_COMMAND_LIGHT_LOW_WRITE       0x05
 
   MG5850BClient::MG5850BClient() {}
 
@@ -30,6 +30,7 @@ namespace Victor::Components {
 
   void MG5850BClient::receive(uint8_t ch) {
     _receiveBuffer.push_back(ch);
+    //TODO: check code validate
     if (ch == MG5850B_COMMAND_TAIL) {
       const auto command = _receiveBuffer[2];
       // const auto argumentHigh = _receiveBuffer[3];
@@ -44,8 +45,14 @@ namespace Victor::Components {
           const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
           _enabledCallback(enabled);
         }
-      } else if (command == MG5850B_COMMAND_RADAR_LEVEL_READ) {
-      } else if (command == MG5850B_COMMAND_RADAR_LEVEL_WRITE) {
+      } else if (
+        command == MG5850B_COMMAND_RADAR_DISTANCE_READ ||
+        command == MG5850B_COMMAND_RADAR_DISTANCE_WRITE
+      ) {
+        if (_levelCallback != nullptr) {
+          const auto level = argumentLow; //TODO: to 10x
+          _levelCallback(level);
+        }
       } else if (command == MG5850B_COMMAND_DELAY_LEVEL_READ) {
       } else if (command == MG5850B_COMMAND_DELAY_LEVEL_WRITE) {
       } else if (
@@ -84,6 +91,30 @@ namespace Victor::Components {
     );
   }
 
+  void MG5850BClient::getRadarDistance(const TLevelCallback cb) {
+    _clearCallbacks();
+    _levelCallback = cb;
+    _sendCommand(
+      MG5850B_COMMAND_RADAR_DISTANCE_READ,
+      MG5850B_COMMAND_ARGUMENT_EMPTY,
+      MG5850B_COMMAND_ARGUMENT_EMPTY
+    );
+  }
+
+  bool MG5850BClient::setRadarDistance(const uint8_t level, const TLevelCallback cb) {
+    if (level < 0 || level > 15) {
+      return false;
+    }
+    _clearCallbacks();
+    _levelCallback = cb;
+    _sendCommand(
+      MG5850B_COMMAND_RADAR_DISTANCE_WRITE,
+      MG5850B_COMMAND_ARGUMENT_EMPTY,
+      level //TODO: to HEX
+    );
+    return true;
+  }
+
   void MG5850BClient::getLightEnable(const TEnabledCallback cb) {
     _clearCallbacks();
     _enabledCallback = cb;
@@ -114,7 +145,7 @@ namespace Victor::Components {
       command,
       argumentHigh,
       argumentLow,
-      command ^ argumentHigh ^ argumentLow,
+      command ^ argumentHigh ^ argumentLow, // check code
       MG5850B_COMMAND_TAIL,
     };
     onCommand(payload, 7);
@@ -122,6 +153,7 @@ namespace Victor::Components {
 
   void MG5850BClient::_clearCallbacks() {
     _enabledCallback = nullptr;
+    _levelCallback = nullptr;
   }
 
 } // namespace Victor::Components
