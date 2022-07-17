@@ -31,9 +31,13 @@ void setup() {
   ledOff();
 }
 
-void printRadar(bool enabled) {
+void printEnabled(const bool enabled) {
   auto state = String(enabled ? "enabled" : "disabled");
-  Serial.println("[" + String(millis()) + "] radar: " + state);
+  Serial.println("[" + String(millis()) + "] func " + state);
+}
+void printLevel(const uint8_t level) {
+  auto state = String(level);
+  Serial.println("[" + String(millis()) + "] level " + state);
 }
 
 void loop() {
@@ -51,12 +55,22 @@ void loop() {
   if (message.length() > 0) {
     ledOn();
     Serial.println("[" + String(millis()) + "] input: " + message);
-    if (message.indexOf("true") == 0) {
-      _client.setRadarEnable(true, printRadar);
-    } else if (message.indexOf("false") == 0) {
-      _client.setRadarEnable(false, printRadar);
-    } else if (message.indexOf("read") == 0) {
-      _client.getRadarEnable(printRadar);
+    if (message.indexOf("setRadarEnable1") == 0) {
+      _client.setRadarEnable(true, printEnabled);
+    } else if (message.indexOf("setRadarEnable0") == 0) {
+      _client.setRadarEnable(false, printEnabled);
+    } else if (message.indexOf("getRadarEnable") == 0) {
+      _client.getRadarEnable(printEnabled);
+    } else if (message.indexOf("setRadarDistance5") == 0) {
+      _client.setRadarDistance(5, printLevel);
+    } else if (message.indexOf("getRadarDistance") == 0) {
+      _client.getRadarDistance(printLevel);
+    } else if (message.indexOf("setLightEnable1") == 0) {
+      _client.setLightEnable(true, printEnabled);
+    } else if (message.indexOf("setLightEnable0") == 0) {
+      _client.setLightEnable(false, printEnabled);
+    } else if (message.indexOf("getLightEnable") == 0) {
+      _client.getLightEnable(printEnabled);
     }
     ledOff();
   }

@@ -51,7 +51,7 @@ namespace Victor::Components {
           command == MG5850B_COMMAND_RADAR_DISTANCE_WRITE
         ) {
           if (_levelCallback != nullptr) {
-            const auto level = argumentLow; //TODO: to 10x
+            const auto level = argumentLow;
             _levelCallback(level);
           }
         } else if (command == MG5850B_COMMAND_DELAY_LEVEL_READ) {
@@ -114,7 +114,7 @@ namespace Victor::Components {
     _sendCommand(
       MG5850B_COMMAND_RADAR_DISTANCE_WRITE,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
-      level //TODO: to HEX
+      level
     );
     return true;
   }
