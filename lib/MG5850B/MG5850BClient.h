@@ -24,6 +24,7 @@ namespace Victor::Components {
 
    private:
     std::vector<uint8_t> _receiveBuffer = {};
+    static uint8_t _calculateCheckCode(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow);
     void _sendCommand(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow);
     void _clearCallbacks();
     TEnabledCallback _enabledCallback = nullptr;

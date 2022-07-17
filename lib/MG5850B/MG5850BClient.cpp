@@ -30,44 +30,48 @@ namespace Victor::Components {
 
   void MG5850BClient::receive(uint8_t ch) {
     _receiveBuffer.push_back(ch);
-    //TODO: check code validate
-    if (ch == MG5850B_COMMAND_TAIL) {
-      const auto command = _receiveBuffer[2];
-      // const auto argumentHigh = _receiveBuffer[3];
-      const auto argumentLow  = _receiveBuffer[4];
-      _receiveBuffer.clear();
-      // switch
-      if (
-        command == MG5850B_COMMAND_RADAR_ENABLE_READ ||
-        command == MG5850B_COMMAND_RADAR_ENABLE_WRITE
-      ) {
-        if (_enabledCallback != nullptr) {
-          const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-          _enabledCallback(enabled);
+    if (ch == MG5850B_COMMAND_TAIL && _receiveBuffer.size() == 7) {
+      const auto checkCode = _receiveBuffer[5];
+      const auto calculated = _calculateCheckCode(_receiveBuffer[2], _receiveBuffer[3], _receiveBuffer[4]);
+      if (checkCode == calculated) {
+        const auto command = _receiveBuffer[2];
+        // const auto argumentHigh = _receiveBuffer[3];
+        const auto argumentLow  = _receiveBuffer[4];
+        // switch
+        if (
+          command == MG5850B_COMMAND_RADAR_ENABLE_READ ||
+          command == MG5850B_COMMAND_RADAR_ENABLE_WRITE
+        ) {
+          if (_enabledCallback != nullptr) {
+            const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
+            _enabledCallback(enabled);
+          }
+        } else if (
+          command == MG5850B_COMMAND_RADAR_DISTANCE_READ ||
+          command == MG5850B_COMMAND_RADAR_DISTANCE_WRITE
+        ) {
+          if (_levelCallback != nullptr) {
+            const auto level = argumentLow; //TODO: to 10x
+            _levelCallback(level);
+          }
+        } else if (command == MG5850B_COMMAND_DELAY_LEVEL_READ) {
+        } else if (command == MG5850B_COMMAND_DELAY_LEVEL_WRITE) {
+        } else if (
+          command == MG5850B_COMMAND_LIGHT_ENABLE_READ ||
+          command == MG5850B_COMMAND_LIGHT_ENABLE_WRITE
+        ) {
+          if (_enabledCallback != nullptr) {
+            const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
+            _enabledCallback(enabled);
+          }
+        } else if (command == MG5850B_COMMAND_LIGHT_HIGH_READ) {
+        } else if (command == MG5850B_COMMAND_LIGHT_HIGH_WRITE) {
+        } else if (command == MG5850B_COMMAND_LIGHT_LOW_READ) {
+        } else if (command == MG5850B_COMMAND_LIGHT_LOW_WRITE) {
         }
-      } else if (
-        command == MG5850B_COMMAND_RADAR_DISTANCE_READ ||
-        command == MG5850B_COMMAND_RADAR_DISTANCE_WRITE
-      ) {
-        if (_levelCallback != nullptr) {
-          const auto level = argumentLow; //TODO: to 10x
-          _levelCallback(level);
-        }
-      } else if (command == MG5850B_COMMAND_DELAY_LEVEL_READ) {
-      } else if (command == MG5850B_COMMAND_DELAY_LEVEL_WRITE) {
-      } else if (
-        command == MG5850B_COMMAND_LIGHT_ENABLE_READ ||
-        command == MG5850B_COMMAND_LIGHT_ENABLE_WRITE
-      ) {
-        if (_enabledCallback != nullptr) {
-          const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-          _enabledCallback(enabled);
-        }
-      } else if (command == MG5850B_COMMAND_LIGHT_HIGH_READ) {
-      } else if (command == MG5850B_COMMAND_LIGHT_HIGH_WRITE) {
-      } else if (command == MG5850B_COMMAND_LIGHT_LOW_READ) {
-      } else if (command == MG5850B_COMMAND_LIGHT_LOW_WRITE) {
       }
+      // reset buffer
+      _receiveBuffer.clear();
     }
   }
 
@@ -135,6 +139,11 @@ namespace Victor::Components {
     );
   }
 
+  uint8_t MG5850BClient::_calculateCheckCode(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow) {
+    const auto checkCode = command ^ argumentHigh ^ argumentLow;
+    return checkCode;
+  }
+
   void MG5850BClient::_sendCommand(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow) {
     if (onCommand == nullptr) {
       return;
@@ -145,7 +154,7 @@ namespace Victor::Components {
       command,
       argumentHigh,
       argumentLow,
-      command ^ argumentHigh ^ argumentLow, // check code
+      _calculateCheckCode(command, argumentHigh, argumentLow),
       MG5850B_COMMAND_TAIL,
     };
     onCommand(payload, 7);
