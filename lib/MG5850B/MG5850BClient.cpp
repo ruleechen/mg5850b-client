@@ -2,8 +2,9 @@
 
 namespace Victor::Components {
 
-  #define MG5850B_COMMAND_HEAD_BYTE1            0x55
-  #define MG5850B_COMMAND_HEAD_BYTE2            0x5a
+  #define MG5850B_COMMAND_BYTES                 7
+  #define MG5850B_COMMAND_HEAD1                 0x55
+  #define MG5850B_COMMAND_HEAD2                 0x5a
   #define MG5850B_COMMAND_TAIL                  0xfe
   #define MG5850B_COMMAND_ARGUMENT_EMPTY        0x00
   #define MG5850B_COMMAND_ARGUMENT_TRUE         0x01
@@ -12,8 +13,8 @@ namespace Victor::Components {
   #define MG5850B_COMMAND_RADAR_ENABLE_WRITE    0x09
   #define MG5850B_COMMAND_RADAR_DISTANCE_READ   0x81
   #define MG5850B_COMMAND_RADAR_DISTANCE_WRITE  0x01
-  #define MG5850B_COMMAND_DELAY_LEVEL_READ      0x82
-  #define MG5850B_COMMAND_DELAY_LEVEL_WRITE     0x02
+  #define MG5850B_COMMAND_DELAY_TIME_READ       0x82
+  #define MG5850B_COMMAND_DELAY_TIME_WRITE      0x02
   #define MG5850B_COMMAND_LIGHT_ENABLE_READ     0x83
   #define MG5850B_COMMAND_LIGHT_ENABLE_WRITE    0x03
   #define MG5850B_COMMAND_LIGHT_HIGH_READ       0x84
@@ -28,51 +29,44 @@ namespace Victor::Components {
     _clearCallbacks();
   }
 
-  void MG5850BClient::receive(uint8_t ch) {
+  void MG5850BClient::receive(const uint8_t ch) {
     _receiveBuffer.push_back(ch);
-    if (ch == MG5850B_COMMAND_TAIL && _receiveBuffer.size() == 7) {
-      const auto checkCode = _receiveBuffer[5];
-      const auto calculated = _calculateCheckCode(_receiveBuffer[2], _receiveBuffer[3], _receiveBuffer[4]);
-      if (checkCode == calculated) {
+    if (ch == MG5850B_COMMAND_TAIL) {
+      if (_receiveBuffer.size() == MG5850B_COMMAND_BYTES) { // validate length
         const auto command = _receiveBuffer[2];
-        const auto argumentHigh = _receiveBuffer[3];
-        const auto argumentLow  = _receiveBuffer[4];
-        // switch
-        if (
-          command == MG5850B_COMMAND_RADAR_ENABLE_READ ||
-          command == MG5850B_COMMAND_RADAR_ENABLE_WRITE
-        ) {
-          if (_enabledCallback != nullptr) {
-            const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-            _enabledCallback(enabled);
-          }
-        } else if (
-          command == MG5850B_COMMAND_RADAR_DISTANCE_READ ||
-          command == MG5850B_COMMAND_RADAR_DISTANCE_WRITE
-        ) {
-          if (_levelCallback != nullptr) {
-            const auto level = argumentLow;
-            _levelCallback(level);
-          }
-        } else if (command == MG5850B_COMMAND_DELAY_LEVEL_READ) {
-        } else if (command == MG5850B_COMMAND_DELAY_LEVEL_WRITE) {
-        } else if (
-          command == MG5850B_COMMAND_LIGHT_ENABLE_READ ||
-          command == MG5850B_COMMAND_LIGHT_ENABLE_WRITE
-        ) {
-          if (_enabledCallback != nullptr) {
-            const auto enabled = argumentLow == MG5850B_COMMAND_ARGUMENT_TRUE;
-            _enabledCallback(enabled);
-          }
-        } else if (
-          command == MG5850B_COMMAND_LIGHT_HIGH_READ ||
-          command == MG5850B_COMMAND_LIGHT_HIGH_WRITE ||
-          command == MG5850B_COMMAND_LIGHT_LOW_READ ||
-          command == MG5850B_COMMAND_LIGHT_LOW_WRITE
-        ) {
-          if (_valueCallback != nullptr) {
-            const uint16_t value = ((uint16_t)argumentHigh << 8) | argumentLow;
-            _valueCallback(value);
+        const auto argHigh = _receiveBuffer[3];
+        const auto argLow  = _receiveBuffer[4];
+        const auto checkCode = _receiveBuffer[5];
+        const auto calculated = _calculateCheckCode(command, argHigh, argLow);
+        if (checkCode == calculated) { // validate `check code`
+          switch (command) {
+            case MG5850B_COMMAND_RADAR_ENABLE_READ:
+            case MG5850B_COMMAND_RADAR_ENABLE_WRITE:
+            case MG5850B_COMMAND_LIGHT_ENABLE_READ:
+            case MG5850B_COMMAND_LIGHT_ENABLE_WRITE: {
+              if (_enabledCallback != nullptr) {
+                const bool enabled = argLow == MG5850B_COMMAND_ARGUMENT_TRUE;
+                _enabledCallback(enabled);
+              }
+              break;
+            }
+            case MG5850B_COMMAND_RADAR_DISTANCE_READ:
+            case MG5850B_COMMAND_RADAR_DISTANCE_WRITE:
+            case MG5850B_COMMAND_DELAY_TIME_READ:
+            case MG5850B_COMMAND_DELAY_TIME_WRITE:
+            case MG5850B_COMMAND_LIGHT_HIGH_READ:
+            case MG5850B_COMMAND_LIGHT_HIGH_WRITE:
+            case MG5850B_COMMAND_LIGHT_LOW_READ:
+            case MG5850B_COMMAND_LIGHT_LOW_WRITE: {
+              if (_valueCallback != nullptr) {
+                const uint16_t value = ((uint16_t)argHigh << 8) | argLow;
+                _valueCallback(value);
+              }
+              break;
+            }
+            default: {
+              break;
+            }
           }
         }
       }
@@ -82,129 +76,122 @@ namespace Victor::Components {
   }
 
   void MG5850BClient::getRadarEnable(const TEnabledCallback cb) {
-    _clearCallbacks();
-    _enabledCallback = cb;
-    _sendCommand(
-      MG5850B_COMMAND_RADAR_ENABLE_READ,
-      MG5850B_COMMAND_ARGUMENT_EMPTY,
-      MG5850B_COMMAND_ARGUMENT_EMPTY
-    );
+    _getEnable(MG5850B_COMMAND_RADAR_ENABLE_READ, cb);
   }
 
   void MG5850BClient::setRadarEnable(const bool enable, const TEnabledCallback cb) {
-    _clearCallbacks();
-    _enabledCallback = cb;
-    _sendCommand(
-      MG5850B_COMMAND_RADAR_ENABLE_WRITE,
-      MG5850B_COMMAND_ARGUMENT_EMPTY,
-      enable ? MG5850B_COMMAND_ARGUMENT_TRUE : MG5850B_COMMAND_ARGUMENT_FALSE
-    );
+    _setEnable(MG5850B_COMMAND_RADAR_ENABLE_WRITE, enable, cb);
   }
 
-  void MG5850BClient::getRadarDistance(const TLevelCallback cb) {
-    _clearCallbacks();
-    _levelCallback = cb;
-    _sendCommand(
-      MG5850B_COMMAND_RADAR_DISTANCE_READ,
-      MG5850B_COMMAND_ARGUMENT_EMPTY,
-      MG5850B_COMMAND_ARGUMENT_EMPTY
-    );
+  void MG5850BClient::getRadarDistance(const TValueCallback cb) {
+    _getValue(MG5850B_COMMAND_RADAR_DISTANCE_READ, cb);
   }
 
-  void MG5850BClient::setRadarDistance(const uint8_t level, const TLevelCallback cb) {
-    _clearCallbacks();
-    _levelCallback = cb;
-    const auto levelFix = std::max<uint8_t>(0, std::min<uint8_t>(15, level)); // 0~15
-    _sendCommand(
-      MG5850B_COMMAND_RADAR_DISTANCE_WRITE,
-      MG5850B_COMMAND_ARGUMENT_EMPTY,
-      levelFix
-    );
+  void MG5850BClient::setRadarDistance(const uint16_t value, const TValueCallback cb) {
+    const auto valueFix = std::max<uint16_t>(0, std::min<uint16_t>(15, value)); // 0~15
+    _setValue(MG5850B_COMMAND_RADAR_DISTANCE_WRITE, valueFix, cb);
+  }
+
+  void MG5850BClient::getDelayTime(const TValueCallback cb) {
+    _getValue(MG5850B_COMMAND_DELAY_TIME_READ, cb);
+  }
+
+  void MG5850BClient::setDelayTime(const uint16_t value, const TValueCallback cb) {
+    _setValue(MG5850B_COMMAND_DELAY_TIME_WRITE, value, cb);
   }
 
   void MG5850BClient::getLightEnable(const TEnabledCallback cb) {
+    _getEnable(MG5850B_COMMAND_LIGHT_ENABLE_READ, cb);
+  }
+
+  void MG5850BClient::setLightEnable(const bool enable, const TEnabledCallback cb) {
+    _setEnable(MG5850B_COMMAND_LIGHT_ENABLE_WRITE, enable, cb);
+  }
+
+  void MG5850BClient::getLightHigh(const TValueCallback cb) {
+    _getValue(MG5850B_COMMAND_LIGHT_HIGH_READ, cb);
+  }
+
+  void MG5850BClient::setLightHigh(const uint16_t value, const TValueCallback cb) {
+    const auto valueFix = std::max<uint16_t>(0, std::min<uint16_t>(1023, value)); // 0~1023
+    _setValue(MG5850B_COMMAND_LIGHT_HIGH_WRITE, valueFix, cb);
+  }
+
+  void MG5850BClient::getLightLow(const TValueCallback cb) {
+    _getValue(MG5850B_COMMAND_LIGHT_LOW_READ, cb);
+  }
+
+  void MG5850BClient::setLightLow(const uint16_t value, const TValueCallback cb) {
+    const auto valueFix = std::max<uint16_t>(0, std::min<uint16_t>(1023, value)); // 0~1023
+    _setValue(MG5850B_COMMAND_LIGHT_LOW_WRITE, valueFix, cb);
+  }
+
+  void MG5850BClient::_getEnable(const uint8_t command, const TEnabledCallback cb) {
     _clearCallbacks();
     _enabledCallback = cb;
-    _sendCommand(
-      MG5850B_COMMAND_LIGHT_ENABLE_READ,
+    _emitCommand(
+      command,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
       MG5850B_COMMAND_ARGUMENT_EMPTY
     );
   }
 
-  void MG5850BClient::setLightEnable(const bool enable, const TEnabledCallback cb) {
+  void MG5850BClient::_setEnable(const uint8_t command, const bool enable, const TEnabledCallback cb) {
     _clearCallbacks();
     _enabledCallback = cb;
-    _sendCommand(
-      MG5850B_COMMAND_LIGHT_ENABLE_WRITE,
+    _emitCommand(
+      command,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
       enable ? MG5850B_COMMAND_ARGUMENT_TRUE : MG5850B_COMMAND_ARGUMENT_FALSE
     );
   }
 
-  void MG5850BClient::_getLightValue(const uint8_t command, const TValueCallback cb) {
+  void MG5850BClient::_getValue(const uint8_t command, const TValueCallback cb) {
     _clearCallbacks();
     _valueCallback = cb;
-    _sendCommand(
+    _emitCommand(
       command,
       MG5850B_COMMAND_ARGUMENT_EMPTY,
       MG5850B_COMMAND_ARGUMENT_EMPTY
     );
   }
 
-  void MG5850BClient::_setLightValue(const uint8_t command, const uint16_t value, const TValueCallback cb) {
+  void MG5850BClient::_setValue(const uint8_t command, const uint16_t value, const TValueCallback cb) {
     _clearCallbacks();
     _valueCallback = cb;
-    const auto valueFix = std::max<uint16_t>(0, std::min<uint16_t>(1023, value)); // 0~1023
-    const uint8_t argumentHigh = valueFix >> 8;
-    const uint8_t argumentLow  = valueFix;
-    _sendCommand(
+    const uint8_t argHigh = value >> 8;
+    const uint8_t argLow  = value;
+    _emitCommand(
       command,
-      argumentHigh,
-      argumentLow
+      argHigh,
+      argLow
     );
   }
 
-  void MG5850BClient::getLightHigh(const TValueCallback cb) {
-    _getLightValue(MG5850B_COMMAND_LIGHT_HIGH_READ, cb);
-  }
-
-  void MG5850BClient::setLightHigh(const uint16_t value, const TValueCallback cb) {
-    _setLightValue(MG5850B_COMMAND_LIGHT_HIGH_WRITE, value, cb);
-  }
-
-  void MG5850BClient::getLightLow(const TValueCallback cb) {
-    _getLightValue(MG5850B_COMMAND_LIGHT_LOW_READ, cb);
-  }
-
-  void MG5850BClient::setLightLow(const uint16_t value, const TValueCallback cb) {
-    _setLightValue(MG5850B_COMMAND_LIGHT_LOW_WRITE, value, cb);
-  }
-
-  uint8_t MG5850BClient::_calculateCheckCode(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow) {
-    const auto checkCode = command ^ argumentHigh ^ argumentLow;
+  uint8_t MG5850BClient::_calculateCheckCode(const uint8_t command, const uint8_t argHigh, const uint8_t argLow) {
+    const auto checkCode = command ^ argHigh ^ argLow;
     return checkCode;
   }
 
-  void MG5850BClient::_sendCommand(const uint8_t command, const uint8_t argumentHigh, const uint8_t argumentLow) {
+  void MG5850BClient::_emitCommand(const uint8_t command, const uint8_t argHigh, const uint8_t argLow) {
     if (onCommand == nullptr) {
       return;
     }
+    const auto checkCode = _calculateCheckCode(command, argHigh, argLow);
     const uint8_t payload[] = {
-      MG5850B_COMMAND_HEAD_BYTE1,
-      MG5850B_COMMAND_HEAD_BYTE2,
+      MG5850B_COMMAND_HEAD1,
+      MG5850B_COMMAND_HEAD2,
       command,
-      argumentHigh,
-      argumentLow,
-      _calculateCheckCode(command, argumentHigh, argumentLow),
+      argHigh,
+      argLow,
+      checkCode,
       MG5850B_COMMAND_TAIL,
     };
-    onCommand(payload, 7);
+    onCommand(payload, MG5850B_COMMAND_BYTES);
   }
 
   void MG5850BClient::_clearCallbacks() {
     _enabledCallback = nullptr;
-    _levelCallback = nullptr;
     _valueCallback = nullptr;
   }
 

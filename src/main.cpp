@@ -35,10 +35,6 @@ void printEnabled(const bool enabled) {
   auto state = String(enabled ? "enabled" : "disabled");
   Serial.println("[" + String(millis()) + "] func " + state);
 }
-void printLevel(const uint8_t level) {
-  auto state = String(level);
-  Serial.println("[" + String(millis()) + "] level " + state);
-}
 void printValue(const uint16_t value) {
   auto state = String(value);
   Serial.println("[" + String(millis()) + "] value " + state);
@@ -59,22 +55,26 @@ void loop() {
   if (message.length() > 0) {
     ledOn();
     Serial.println("[" + String(millis()) + "] input: " + message);
-    if (message.indexOf("setRadarEnable1") == 0) {
+    if (message.indexOf("getRadarEnable") == 0) {
+      _client.getRadarEnable(printEnabled);
+    } else if (message.indexOf("setRadarEnable1") == 0) {
       _client.setRadarEnable(true, printEnabled);
     } else if (message.indexOf("setRadarEnable0") == 0) {
       _client.setRadarEnable(false, printEnabled);
-    } else if (message.indexOf("getRadarEnable") == 0) {
-      _client.getRadarEnable(printEnabled);
-    } else if (message.indexOf("setRadarDistance5") == 0) {
-      _client.setRadarDistance(5, printLevel);
     } else if (message.indexOf("getRadarDistance") == 0) {
-      _client.getRadarDistance(printLevel);
+      _client.getRadarDistance(printValue);
+    } else if (message.indexOf("setRadarDistance5") == 0) {
+      _client.setRadarDistance(5, printValue);
+    } else if (message.indexOf("getDelayTime") == 0) {
+      _client.getDelayTime(printValue);
+    } else if (message.indexOf("setDelayTime45") == 0) {
+      _client.setDelayTime(45, printValue);
+    } else if (message.indexOf("getLightEnable") == 0) {
+      _client.getLightEnable(printEnabled);
     } else if (message.indexOf("setLightEnable1") == 0) {
       _client.setLightEnable(true, printEnabled);
     } else if (message.indexOf("setLightEnable0") == 0) {
       _client.setLightEnable(false, printEnabled);
-    } else if (message.indexOf("getLightEnable") == 0) {
-      _client.getLightEnable(printEnabled);
     } else if (message.indexOf("getLightHigh") == 0) {
       _client.getLightHigh(printValue);
     } else if (message.indexOf("setLightHigh800") == 0) {
