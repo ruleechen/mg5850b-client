@@ -1,5 +1,5 @@
-# Try MG5850B
-Test project for MG5850B
+# MG5850B Client
+Serial client for MG5850B module so that we can read/write configuration easily.
 
 ## MG5850B
 5.8GHz radar sensor module

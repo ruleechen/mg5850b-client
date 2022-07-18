@@ -2,7 +2,6 @@
 #define MG5850BClient_h
 
 #include <functional>
-#include <Arduino.h>
 
 namespace Victor::Components {
   class MG5850BClient {
