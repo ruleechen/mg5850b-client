@@ -1,0 +1,47 @@
+{
+  "name": "mg5850b-client",
+  "version": "0.0.1",
+  "description": "Serial client for MG5850B module",
+  "keywords": [
+    "Serial",
+    "MG5850B",
+    "Client",
+    "5.8GHz",
+    "Radar"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruleechen/mg5850b-client.git"
+  },
+  "authors": [
+    {
+      "name": "Rulee Chen",
+      "email": "rulee@live.cn",
+      "url": "https://github.com/ruleechen",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "examples": [
+    {
+      "name": "standard",
+      "base": "examples/standard",
+      "files": [
+        "main.cpp"
+      ]
+    }
+  ],
+  "export": {
+    "exclude": [
+      "src/main.cpp"
+    ],
+    "include": [
+      "data/*",
+      "examples/*",
+      "include/*",
+      "src/*",
+      "LICENSE",
+      "README.md"
+    ]
+  }
+}
