@@ -4,31 +4,33 @@
 
 using namespace Victor::Components;
 
-SoftwareSerial _serial;
-MG5850BClient _client;
+SoftwareSerial swSerial;
+MG5850BClient client;
 
 void ledOn() {
   digitalWrite(LED_BUILTIN, LOW);
-  delay(100); // at least light for some time
 }
-
 void ledOff() {
   digitalWrite(LED_BUILTIN, HIGH);
+}
+void ledFlash() {
+  ledOn();
+  delay(100); // at least light for some time
+  ledOff();
 }
 
 void setup() {
   Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
 
-  _serial.begin(9600, SWSERIAL_8N1, 4, 5, false, 256);
-  _client.onCommand = [](const uint8_t* payload, const size_t size) {
-    _serial.write(payload, size);
+  swSerial.begin(9600, SWSERIAL_8N1, 4, 5, false, 256);
+  client.onCommand = [](const uint8_t* payload, const size_t size) {
+    swSerial.write(payload, size);
   };
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  ledOn();
-
+  Serial.println();
   Serial.println("setup complete");
-  ledOff();
+  ledFlash();
 }
 
 void printEnabled(const bool enabled) {
@@ -40,50 +42,66 @@ void printValue(const uint16_t value) {
   Serial.println("[" + String(millis()) + "] value " + state);
 }
 
+String message = "";
+bool isEnterPressed = false;
+
 void loop() {
-  while (_serial.available()) {
-    auto ch = _serial.read();
-    _client.receive((uint8_t)ch);
+  while (swSerial.available()) {
+    auto ch = swSerial.read();
+    client.receive((uint8_t)ch);
   }
 
-  auto message = String("");
+  isEnterPressed = false;
   while (Serial.available()) {
-    message += (char)Serial.read();
-    delay(2);
+    const auto ch = Serial.read();
+    if (!isEnterPressed) {
+      isEnterPressed = (ch == '\r');
+      if (!isEnterPressed) {
+        message += (char)ch;
+      }
+    }
   }
 
-  if (message.length() > 0) {
-    ledOn();
-    Serial.println("[" + String(millis()) + "] input: " + message);
-    if (message.indexOf("getRadarEnable") == 0) {
-      _client.getRadarEnable(printEnabled);
-    } else if (message.indexOf("setRadarEnable1") == 0) {
-      _client.setRadarEnable(true, printEnabled);
-    } else if (message.indexOf("setRadarEnable0") == 0) {
-      _client.setRadarEnable(false, printEnabled);
-    } else if (message.indexOf("getRadarDistance") == 0) {
-      _client.getRadarDistance(printValue);
-    } else if (message.indexOf("setRadarDistance5") == 0) {
-      _client.setRadarDistance(5, printValue);
-    } else if (message.indexOf("getDelayTime") == 0) {
-      _client.getDelayTime(printValue);
-    } else if (message.indexOf("setDelayTime45") == 0) {
-      _client.setDelayTime(45, printValue);
-    } else if (message.indexOf("getLightEnable") == 0) {
-      _client.getLightEnable(printEnabled);
-    } else if (message.indexOf("setLightEnable1") == 0) {
-      _client.setLightEnable(true, printEnabled);
-    } else if (message.indexOf("setLightEnable0") == 0) {
-      _client.setLightEnable(false, printEnabled);
-    } else if (message.indexOf("getLightHigh") == 0) {
-      _client.getLightHigh(printValue);
-    } else if (message.indexOf("setLightHigh800") == 0) {
-      _client.setLightHigh(800, printValue);
-    } else if (message.indexOf("getLightLow") == 0) {
-      _client.getLightLow(printValue);
-    } else if (message.indexOf("setLightLow750") == 0) {
-      _client.setLightLow(750, printValue);
+  if (isEnterPressed) {
+    message.trim();
+    const auto idx = message.indexOf(" ");
+    const auto cmd = idx > 0 ? message.substring(0, idx) : message;
+    const auto arg = idx > 0 ? message.substring(idx + 1) : "";
+    // call apis
+    if (cmd == "getRadarEnable") {
+      client.getRadarEnable(printEnabled);
+    } else if (cmd == "setRadarEnable") {
+      const auto enable = (arg == "1");
+      client.setRadarEnable(enable, printEnabled);
+    } else if (cmd == "getRadarDistance") {
+      client.getRadarDistance(printValue);
+    } else if (cmd == "setRadarDistance") {
+      const auto distance = arg.toInt();
+      client.setRadarDistance(distance, printValue);
+    } else if (cmd == "getDelayTime") {
+      client.getDelayTime(printValue);
+    } else if (cmd == "setDelayTime") {
+      const auto delay = arg.toInt();
+      client.setDelayTime(delay, printValue);
+    } else if (cmd == "getLightEnable") {
+      client.getLightEnable(printEnabled);
+    } else if (cmd == "setLightEnable") {
+      const auto enable = (arg == "1");
+      client.setLightEnable(enable, printEnabled);
+    } else if (cmd == "getLightHigh") {
+      client.getLightHigh(printValue);
+    } else if (cmd == "setLightHigh") {
+      const auto value = arg.toInt();
+      client.setLightHigh(value, printValue);
+    } else if (cmd == "getLightLow") {
+      client.getLightLow(printValue);
+    } else if (cmd == "setLightLow") {
+      const auto value = arg.toInt();
+      client.setLightLow(value, printValue);
     }
-    ledOff();
+    // led
+    ledFlash();
+    // reset
+    message = "";
   }
 }
