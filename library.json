@@ -1,6 +1,6 @@
 {
   "name": "mg5850b-client",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Serial client for MG5850B module",
   "keywords": [
     "Serial",

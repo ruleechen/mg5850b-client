@@ -13,9 +13,9 @@ void ledOn() {
 void ledOff() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
-void ledFlash() {
+void ledFlash(unsigned long ms = 100) {
   ledOn();
-  delay(100); // at least light for some time
+  delay(ms); // at least light for some time
   ledOff();
 }
 
@@ -30,7 +30,7 @@ void setup() {
 
   Serial.println();
   Serial.println("setup complete");
-  ledFlash();
+  ledFlash(500);
 }
 
 void printEnabled(const bool enabled) {
